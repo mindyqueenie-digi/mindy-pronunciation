@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>語思 CALC | MiBi 教你把英文唸清楚</title>
+    <link href="https://fonts.googleapis.com/css2?family=Gentium+Plus&family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root { 
+            --primary-blue: #1e2a47; 
+            --accent-gold: #d4af37; 
+            --bg-main: #f4f7f9; 
+        }
+
+        /* 隱藏預設游標，由 MiBi 取代 */
+        * { cursor: none !important; } 
+
+        body { 
+            font-family: 'Gentium Plus', 'Noto Sans TC', serif; 
+            background-color: var(--bg-main); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            padding: 20px;
+            margin: 0;
+            overflow-x: hidden;
+        }
+
+        /* MiBi 隨身游標樣式 */
+        #mibi-cursor {
+            position: fixed;
+            width: 60px;
+            height: 60px;
+            background-image: url('mibi_happy.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            pointer-events: none;
+            z-index: 9999;
+            transition: transform 0.05s ease-out;
+            transform: translate(-50%, -50%);
+        }
+
+        header { text-align: center; margin-bottom: 25px; }
+        h1 { color: var(--primary-blue); font-size: 2.2rem; margin-bottom: 10px; }
+        .subtitle { color: var(--accent-gold); font-weight: bold; font-size: 1.2rem; }
+
+        .toggle-container { margin-bottom: 30px; display: flex; background: #e0e6eb; border-radius: 50px; padding: 5px; }
+        .toggle-btn { padding: 10px 30px; border: none; border-radius: 50px; cursor: none; font-weight: bold; transition: 0.3s; color: #666; }
+        .toggle-btn.active { background: var(--primary-blue); color: white; }
+
+        .container { max-width: 1100px; width: 100%; }
+        .section-title { background: var(--primary-blue); color: white; padding: 12px 20px; border-radius: 8px; margin: 35px 0 15px; font-size: 1.3rem; }
+        
+        .ipa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .ipa-card { 
+            background: white; border-radius: 18px; padding: 25px 20px; 
+            text-align: center; transition: 0.3s; 
+            box-shadow: 0 6px 12px rgba(0,0,0,0.05); border: 2px solid transparent; 
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+        }
+        .ipa-card:hover { transform: translateY(-5px); border-color: var(--accent-gold); }
+        .ipa-card.active { background: #fffcf0; border-color: var(--accent-gold); }
+
+        .symbol { font-size: 2.8rem; font-weight: bold; color: var(--primary-blue); margin-bottom: 5px; }
+        .example { color: #555; font-size: 1.2rem; font-weight: bold; }
+        
+        footer { margin-top: 70px; padding: 20px; border-top: 1px solid #ddd; width: 100%; text-align: center; color: #999; }
+    </style>
+</head>
+<body>
+
+<div id="mibi-cursor"></div>
+
+<header>
+    <h1>MiBi 教你把英文唸清楚</h1>
+    <div class="subtitle">IPA 與 KK 音標發音對照</div>
+</header>
+
+<div class="toggle-container">
+    <button id="btn-ipa" class="toggle-btn active" onclick="switchMode('IPA')">IPA (國際)</button>
+    <button id="btn-kk" class="toggle-btn" onclick="switchMode('KK')">KK (傳統)</button>
+</div>
+
+<div class="container" id="app"></div>
+
+<footer>
+    © 2026 語思語言學習品牌 | Cognitive Alignment Language Construction (CALC)
+</footer>
+
+<script>
+    // MiBi 游標追蹤邏輯
+    const cursor = document.getElementById('mibi-cursor');
+    document.addEventListener('mousemove', (e) => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+    });
+
+    let currentMode = 'IPA';
+    const ipaData = [
+        { cat: "短母音 (Short Vowels)", symbols: [
+            { ipa: "/ɪ/", kk: "[ɪ]", e: "Sit" }, { ipa: "/e/", kk: "[ɛ]", e: "Bed" },
+            { ipa: "/æ/", kk: "[æ]", e: "Cat" }, { ipa: "/ʌ/", kk: "[ʌ]", e: "Cup" },
+            { ipa: "/ə/", kk: "[ə]", e: "Sofa" }, { ipa: "/ɒ/", kk: "[ɑ]", e: "Hot" },
+            { ipa: "/ʊ/", kk: "[ʊ]", e: "Book" }
+        ]},
+        { cat: "長母音 (Long Vowels)", symbols: [
+            { ipa: "/iː/", kk: "[i]", e: "See" }, { ipa: "/ɑː/", kk: "[ɑ]", e: "Car" },
+            { ipa: "/ɔː/", kk: "[ɔ]", e: "Door" }, { ipa: "/uː/", kk: "[u]", e: "Too" },
+            { ipa: "/ɜː/", kk: "[ɝ]", e: "Bird" }
+        ]},
+        { cat: "雙母音 (Diphthongs)", symbols: [
+            { ipa: "/eɪ/", kk: "[e]", e: "Say" }, { ipa: "/aɪ/", kk: "[aɪ]", e: "My" },
+            { ipa: "/ɔɪ/", kk: "[ɔɪ]", e: "Boy" }, { ipa: "/aʊ/", kk: "[aʊ]", e: "Now" },
+            { ipa: "/əʊ/", kk: "[o]", e: "Go" }, { ipa: "/ɪə/", kk: "[ɪr]", e: "Near" },
+            { ipa: "/eə/", kk: "[ɛr]", e: "Hair" }, { ipa: "/ʊə/", kk: "[ʊr]", e: "Pure" }
+        ]},
+        { cat: "無聲子音 (Voiceless Consonants)", symbols: [
+            { ipa: "/p/", kk: "[p]", e: "Pen" }, { ipa: "/t/", kk: "[t]", e: "Tea" },
+            { ipa: "/k/", kk: "[k]", e: "Cup" }, { ipa: "/f/", kk: "[f]", e: "Fan" },
+            { ipa: "/θ/", kk: "[θ]", e: "Thin" }, { ipa: "/s/", kk: "[s]", e: "Sun" },
+            { ipa: "/ʃ/", kk: "[ʃ]", e: "She" }, { ipa: "/tʃ/", kk: "[tʃ]", e: "Chin" },
+            { ipa: "/h/", kk: "[h]", e: "Hat" }
+        ]},
+        { cat: "有聲子音 (Voiced Consonants)", symbols: [
+            { ipa: "/b/", kk: "[b]", e: "Bad" }, { ipa: "/d/", kk: "[d]", e: "Did" },
+            { ipa: "/g/", kk: "[g]", e: "Got" }, { ipa: "/v/", kk: "[v]", e: "Van" },
+            { ipa: "/ð/", kk: "[ð]", e: "This" }, { ipa: "/z/", kk: "[z]", e: "Zoo" },
+            { ipa: "/ʒ/", kk: "[ʒ]", e: "Vision" }, { ipa: "/dʒ/", kk: "[dʒ]", e: "Job" },
+            { ipa: "/m/", kk: "[m]", e: "Map" }, { ipa: "/n/", kk: "[n]", e: "No" },
+            { ipa: "/ŋ/", kk: "[ŋ]", e: "Sing" }, { ipa: "/l/", kk: "[l]", e: "Leg" },
+            { ipa: "/r/", kk: "[r]", e: "Red" }, { ipa: "/j/", kk: "[j]", e: "Yes" },
+            { ipa: "/w/", kk: "[w]", e: "Wet" }
+        ]}
+    ];
+
+    function renderCards() {
+        const app = document.getElementById('app');
+        app.innerHTML = '';
+        ipaData.forEach(section => {
+            const title = document.createElement('div');
+            title.className = 'section-title';
+            title.innerText = section.cat;
+            app.appendChild(title);
+            const grid = document.createElement('div');
+            grid.className = 'ipa-grid';
+            section.symbols.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'ipa-card';
+                card.innerHTML = `
+                    <span class="symbol">${currentMode === 'IPA' ? item.ipa : item.kk}</span>
+                    <span class="example">${item.e}</span>
+                `;
+                card.onclick = () => speak(item.e, card);
+                grid.appendChild(card);
+            });
+            app.appendChild(grid);
+        });
+    }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        document.getElementById('btn-ipa').classList.toggle('active', mode === 'IPA');
+        document.getElementById('btn-kk').classList.toggle('active', mode === 'KK');
+        renderCards();
+    }
+
+    function speak(word, element) {
+        window.speechSynthesis.cancel();
+        element.classList.add('active');
+        setTimeout(() => element.classList.remove('active'), 500);
+        const msg = new SpeechSynthesisUtterance(word);
+        msg.lang = 'en-US';
+        msg.rate = 0.7;
+        window.speechSynthesis.speak(msg);
+    }
+
+    renderCards();
+</script>
+</body>
+</html>
