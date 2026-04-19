@@ -20,20 +20,28 @@
         .score-line { text-align:center; font-family:'Noto Sans TC',sans-serif; font-size:0.9rem; color:#888; margin-bottom:24px; }
         .quiz-wrap { max-width:620px; width:100%; }
         .quiz-card { background:white; border-radius:24px; padding:36px 28px 28px; box-shadow:0 8px 28px rgba(30,42,71,0.10); text-align:center; }
-        .quiz-word { font-size:3rem; font-weight:bold; color:var(--blue); margin-bottom:4px; letter-spacing:2px; line-height:1.2; }
-        .quiz-word u { text-decoration-color:var(--gold); text-underline-offset:6px; text-decoration-thickness:3px; color:#c0392b; }
-        .quiz-sub { font-size:0.88rem; color:#aaa; font-family:'Noto Sans TC',sans-serif; margin-bottom:18px; }
-        .word-btns { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; margin-bottom:24px; }
-        .word-btn { background:var(--bg); border:2px solid #dde3ea; border-radius:50px; padding:7px 18px; font-size:0.88rem; font-weight:bold; color:var(--blue); font-family:inherit; transition:0.2s; }
-        .word-btn:hover { border-color:var(--gold); background:#fffcee; }
-        .word-btn.playing { border-color:var(--gold); background:var(--gold); color:white; }
-        .word-btn u { text-decoration-color:#c0392b; text-underline-offset:3px; text-decoration-thickness:2px; }
+
+        /* 大字單字，可點擊播音 */
+        .quiz-word {
+            font-size:3.2rem; font-weight:bold; color:var(--blue);
+            margin-bottom:6px; letter-spacing:2px; line-height:1.2;
+            display:inline-block; border-radius:12px; padding:8px 20px;
+            transition:background 0.2s;
+        }
+        .quiz-word:hover { background:#fffcee; }
+        .quiz-word.playing { background:var(--gold); color:white; }
+        .quiz-word u { text-decoration-color:#c0392b; text-underline-offset:8px; text-decoration-thickness:3px; color:#c0392b; }
+
+        .quiz-sub { font-size:0.88rem; color:#aaa; font-family:'Noto Sans TC',sans-serif; margin-bottom:28px; }
+
+        /* KK 音標選項 */
         .options { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:22px; }
-        .opt { background:var(--bg); border:2px solid #dde3ea; border-radius:16px; padding:22px 10px; font-size:2.2rem; font-weight:bold; color:var(--blue); font-family:'Gentium Plus',serif; transition:0.2s; }
+        .opt { background:var(--bg); border:2px solid #dde3ea; border-radius:16px; padding:22px 10px; font-size:2rem; font-weight:bold; color:var(--blue); font-family:'Gentium Plus',serif; transition:0.2s; }
         .opt:hover:not(:disabled) { border-color:var(--gold); background:#fffcee; transform:translateY(-3px); }
         .opt.correct { background:#d4f5d4; border-color:#27ae60; color:#1a7a40; }
         .opt.wrong   { background:#fdecea; border-color:#e74c3c; color:#c0392b; }
         .opt:disabled { opacity:0.85; }
+
         .feedback { min-height:60px; font-family:'Noto Sans TC',sans-serif; font-size:0.95rem; color:#333; line-height:1.6; padding:10px 0; }
         .feedback.correct-fb { color:#1a7a40; }
         .feedback.wrong-fb   { color:#c0392b; }
@@ -51,16 +59,17 @@
 <div id="mibi-cursor"></div>
 <a class="back-btn" href="index.html">← 回音標總覽</a>
 <header>
-    <h1>✏️ 音標小測驗</h1>
-    <div class="subtitle">看紅色底線字母，選出它的 IPA 音標</div>
+    <h1>✏️ KK 音標小測驗</h1>
+    <div class="subtitle">看紅色底線字母，選出它的 KK 音標</div>
 </header>
 <div class="quiz-wrap">
     <div class="progress-bar-bg"><div class="progress-bar-fill" id="prog" style="width:0%"></div></div>
     <div class="score-line" id="score-line">第 1 / 10 題　｜　正確：0</div>
     <div class="quiz-card" id="quiz-card">
-        <div class="quiz-word" id="quiz-word">—</div>
-        <div class="quiz-sub">⬆ 紅色底線字母的音標是？點任一單字按鈕可聽發音</div>
-        <div class="word-btns" id="word-btns"></div>
+        <div id="quiz-word-wrap">
+            <span class="quiz-word" id="quiz-word" onclick="playCurrent()">—</span>
+        </div>
+        <div class="quiz-sub">⬆ 點單字聽發音　｜　紅色底線字母的 KK 音標是？</div>
         <div class="options" id="options"></div>
         <div class="feedback" id="feedback"></div>
         <button class="next-btn" id="next-btn" onclick="nextQ()">下一題 →</button>
@@ -73,90 +82,91 @@
         <button class="restart-btn" onclick="startQuiz()">🔄 再來一次</button>
     </div>
 </div>
+
 <script>
 const cursor=document.getElementById('mibi-cursor');
 document.addEventListener('mousemove',e=>{cursor.style.left=e.clientX+'px';cursor.style.top=e.clientY+'px';});
 document.addEventListener('mousedown',()=>cursor.classList.add('clicking'));
 document.addEventListener('mouseup',()=>cursor.classList.remove('clicking'));
 
-// 每個音標含多個例字
-// {w:"單字", m:[起始索引, 結束索引]}  底線範圍（0-based，含頭含尾）
+// KK 音標資料
+// examples: {w:"單字", m:[起,迄]} 底線字元位置(0-based,含頭含尾)
 const ipaData=[
-    {ipa:"/ɪ/", tip:"比 /iː/ 短且放鬆，嘴角微開", examples:[
+    {kk:"[ɪ]",  tip:"比 [i] 短且放鬆，嘴角微開", examples:[
         {w:"sit",m:[0,0]},{w:"lip",m:[0,0]},{w:"fish",m:[1,1]},{w:"miss",m:[1,1]}]},
-    {ipa:"/e/", tip:"嘴巴張開，比注音「ㄝ」更放鬆", examples:[
+    {kk:"[ɛ]",  tip:"嘴巴張開，比注音「ㄝ」更放鬆", examples:[
         {w:"bed",m:[1,1]},{w:"ten",m:[1,1]},{w:"said",m:[1,2]},{w:"bread",m:[2,3]}]},
-    {ipa:"/æ/", tip:"嘴巴大開，下巴往下", examples:[
+    {kk:"[æ]",  tip:"嘴巴大開，下巴往下", examples:[
         {w:"cat",m:[1,1]},{w:"man",m:[1,1]},{w:"black",m:[2,2]},{w:"bad",m:[1,1]}]},
-    {ipa:"/ʌ/", tip:"短促的「ㄚ」，嘴不必全開", examples:[
+    {kk:"[ʌ]",  tip:"短促的「ㄚ」，嘴不必全開", examples:[
         {w:"cup",m:[1,1]},{w:"sun",m:[1,1]},{w:"love",m:[1,1]},{w:"blood",m:[2,3]}]},
-    {ipa:"/ə/", tip:"最常見！非重音音節都用這個", examples:[
+    {kk:"[ə]",  tip:"最常見！非重音音節都用這個", examples:[
         {w:"sofa",m:[3,3]},{w:"about",m:[0,0]},{w:"teacher",m:[5,6]},{w:"banana",m:[1,1]}]},
-    {ipa:"/ɒ/", tip:"嘴大開圓，比「ㄚ」更圓唇", examples:[
+    {kk:"[ɑ]",  tip:"嘴大開，比「ㄚ」更後面", examples:[
         {w:"hot",m:[1,1]},{w:"dog",m:[1,1]},{w:"stop",m:[2,2]},{w:"clock",m:[2,2]}]},
-    {ipa:"/ʊ/", tip:"比 /uː/ 短且放鬆，嘴微圓", examples:[
+    {kk:"[ʊ]",  tip:"比 [u] 短且放鬆，嘴微圓", examples:[
         {w:"book",m:[1,2]},{w:"look",m:[1,2]},{w:"foot",m:[1,2]},{w:"good",m:[1,2]}]},
-    {ipa:"/iː/", tip:"嘴角往兩側拉，維持長音", examples:[
+    {kk:"[i]",  tip:"嘴角往兩側拉，維持長音", examples:[
         {w:"see",m:[1,2]},{w:"feet",m:[1,2]},{w:"tea",m:[1,2]},{w:"machine",m:[5,6]}]},
-    {ipa:"/ɑː/", tip:"嘴巴最大開，舌頭放低平", examples:[
-        {w:"car",m:[1,1]},{w:"farm",m:[1,1]},{w:"father",m:[1,1]},{w:"palm",m:[1,1]}]},
-    {ipa:"/ɔː/", tip:"嘴唇圓形，似「ㄛ」但更長", examples:[
+    {kk:"[ɑr]", tip:"嘴巴最大開，帶 r 色彩", examples:[
+        {w:"car",m:[0,2]},{w:"farm",m:[0,2]},{w:"father",m:[0,2]},{w:"palm",m:[1,1]}]},
+    {kk:"[ɔ]",  tip:"嘴唇圓形，似「ㄛ」", examples:[
         {w:"door",m:[1,2]},{w:"more",m:[1,2]},{w:"thought",m:[0,3]},{w:"law",m:[1,2]}]},
-    {ipa:"/uː/", tip:"嘴唇收圓向前突出", examples:[
+    {kk:"[u]",  tip:"嘴唇收圓向前突出", examples:[
         {w:"too",m:[1,2]},{w:"blue",m:[2,3]},{w:"food",m:[1,2]},{w:"school",m:[2,4]}]},
-    {ipa:"/ɜː/", tip:"嘴型放鬆，不要加捲舌", examples:[
+    {kk:"[ɝ]",  tip:"嘴型放鬆，帶 r 色彩，不要加捲舌", examples:[
         {w:"bird",m:[1,2]},{w:"word",m:[1,2]},{w:"nurse",m:[1,2]},{w:"learn",m:[1,2]}]},
-    {ipa:"/eɪ/", tip:"從「ㄝ」滑向「ɪ」", examples:[
+    {kk:"[e]",  tip:"從「ㄝ」滑向「ɪ」的雙母音", examples:[
         {w:"say",m:[0,1]},{w:"face",m:[1,2]},{w:"rain",m:[0,1]},{w:"eight",m:[0,2]}]},
-    {ipa:"/aɪ/", tip:"從大開「ㄚ」滑向「ɪ」", examples:[
+    {kk:"[aɪ]", tip:"從大開「ㄚ」滑向「ɪ」", examples:[
         {w:"my",m:[0,1]},{w:"nice",m:[1,2]},{w:"time",m:[1,2]},{w:"pie",m:[0,1]}]},
-    {ipa:"/ɔɪ/", tip:"從圓唇「ㄛ」滑向「ɪ」", examples:[
+    {kk:"[ɔɪ]", tip:"從圓唇「ㄛ」滑向「ɪ」", examples:[
         {w:"boy",m:[1,2]},{w:"coin",m:[1,2]},{w:"voice",m:[1,3]},{w:"toy",m:[1,2]}]},
-    {ipa:"/aʊ/", tip:"從「ㄚ」滑向「ʊ」嘴巴收圓", examples:[
+    {kk:"[aʊ]", tip:"從「ㄚ」滑向「ʊ」嘴巴收圓", examples:[
         {w:"now",m:[0,1]},{w:"out",m:[0,1]},{w:"cow",m:[1,2]},{w:"found",m:[0,2]}]},
-    {ipa:"/əʊ/", tip:"從「ə」滑向「ʊ」，嘴漸圓", examples:[
+    {kk:"[o]",  tip:"從「o」滑向「ʊ」，嘴漸圓", examples:[
         {w:"go",m:[0,1]},{w:"home",m:[1,2]},{w:"know",m:[1,3]},{w:"boat",m:[1,2]}]},
-    {ipa:"/p/", tip:"送氣音，手放嘴前感受氣流", examples:[
+    {kk:"[p]",  tip:"送氣音，手放嘴前感受氣流", examples:[
         {w:"pen",m:[0,0]},{w:"cap",m:[2,2]},{w:"open",m:[1,1]},{w:"map",m:[2,2]}]},
-    {ipa:"/t/", tip:"舌尖頂上牙齦，送氣", examples:[
+    {kk:"[t]",  tip:"舌尖頂上牙齦，送氣", examples:[
         {w:"tea",m:[0,0]},{w:"bat",m:[2,2]},{w:"start",m:[1,1]},{w:"water",m:[2,2]}]},
-    {ipa:"/k/", tip:"舌根頂軟顎，送氣", examples:[
+    {kk:"[k]",  tip:"舌根頂軟顎，送氣", examples:[
         {w:"cup",m:[0,0]},{w:"back",m:[2,3]},{w:"school",m:[1,2]},{w:"kite",m:[0,0]}]},
-    {ipa:"/f/", tip:"上齒輕咬下唇，吹氣", examples:[
+    {kk:"[f]",  tip:"上齒輕咬下唇，吹氣", examples:[
         {w:"fan",m:[0,0]},{w:"left",m:[2,2]},{w:"roof",m:[2,3]},{w:"photo",m:[0,1]}]},
-    {ipa:"/θ/", tip:"舌尖輕放上齒間吹氣，台灣人常唸成 /s/", examples:[
+    {kk:"[θ]",  tip:"舌尖輕放上齒間吹氣，台灣人常唸成 [s]", examples:[
         {w:"thin",m:[0,1]},{w:"think",m:[0,1]},{w:"tooth",m:[3,4]},{w:"math",m:[3,4]}]},
-    {ipa:"/s/", tip:"舌尖靠近上牙齦，不碰到", examples:[
+    {kk:"[s]",  tip:"舌尖靠近上牙齦，不碰到", examples:[
         {w:"sun",m:[0,0]},{w:"miss",m:[2,3]},{w:"race",m:[3,3]},{w:"last",m:[3,3]}]},
-    {ipa:"/ʃ/", tip:"嘴唇微圓前突，比 /s/ 更後面", examples:[
+    {kk:"[ʃ]",  tip:"嘴唇微圓前突，比 [s] 更後面", examples:[
         {w:"she",m:[0,1]},{w:"wish",m:[2,3]},{w:"nation",m:[1,2]},{w:"fish",m:[2,3]}]},
-    {ipa:"/tʃ/", tip:"先 /t/ 再 /ʃ/，連成一個音", examples:[
+    {kk:"[tʃ]", tip:"先 [t] 再 [ʃ]，連成一個音", examples:[
         {w:"chin",m:[0,1]},{w:"church",m:[0,2]},{w:"match",m:[3,4]},{w:"watch",m:[3,4]}]},
-    {ipa:"/h/", tip:"輕輕呼氣，聲帶不振動", examples:[
+    {kk:"[h]",  tip:"輕輕呼氣，聲帶不振動", examples:[
         {w:"hat",m:[0,0]},{w:"who",m:[0,1]},{w:"ahead",m:[2,2]},{w:"hotel",m:[0,0]}]},
-    {ipa:"/b/", tip:"與 /p/ 相同嘴型，但聲帶振動", examples:[
+    {kk:"[b]",  tip:"與 [p] 相同嘴型，但聲帶振動", examples:[
         {w:"bad",m:[0,0]},{w:"cab",m:[2,2]},{w:"about",m:[2,2]},{w:"web",m:[2,2]}]},
-    {ipa:"/d/", tip:"與 /t/ 相同嘴型，但聲帶振動", examples:[
+    {kk:"[d]",  tip:"與 [t] 相同嘴型，但聲帶振動", examples:[
         {w:"did",m:[0,0]},{w:"dog",m:[0,0]},{w:"hard",m:[3,3]},{w:"lady",m:[2,2]}]},
-    {ipa:"/g/", tip:"與 /k/ 相同嘴型，但聲帶振動", examples:[
+    {kk:"[g]",  tip:"與 [k] 相同嘴型，但聲帶振動", examples:[
         {w:"got",m:[0,0]},{w:"big",m:[2,2]},{w:"again",m:[2,2]},{w:"flag",m:[3,3]}]},
-    {ipa:"/v/", tip:"上齒咬下唇，聲帶振動，台灣人常唸成 /b/", examples:[
+    {kk:"[v]",  tip:"上齒咬下唇，聲帶振動，台灣人常唸成 [b]", examples:[
         {w:"van",m:[0,0]},{w:"five",m:[3,3]},{w:"love",m:[2,2]},{w:"very",m:[0,0]}]},
-    {ipa:"/ð/", tip:"舌尖放上齒間，聲帶振動，台灣人常唸成 /d/", examples:[
+    {kk:"[ð]",  tip:"舌尖放上齒間，聲帶振動，台灣人常唸成 [d]", examples:[
         {w:"this",m:[0,1]},{w:"them",m:[0,1]},{w:"father",m:[2,3]},{w:"bathe",m:[3,4]}]},
-    {ipa:"/z/", tip:"與 /s/ 相同，但聲帶振動", examples:[
+    {kk:"[z]",  tip:"與 [s] 相同，但聲帶振動", examples:[
         {w:"zoo",m:[0,0]},{w:"jazz",m:[2,3]},{w:"raise",m:[3,4]},{w:"dogs",m:[3,3]}]},
-    {ipa:"/ʒ/", tip:"與 /ʃ/ 相同，但聲帶振動", examples:[
+    {kk:"[ʒ]",  tip:"與 [ʃ] 相同，但聲帶振動", examples:[
         {w:"vision",m:[2,3]},{w:"measure",m:[3,4]},{w:"beige",m:[3,4]},{w:"genre",m:[0,1]}]},
-    {ipa:"/m/", tip:"雙唇閉合，鼻音共鳴", examples:[
+    {kk:"[m]",  tip:"雙唇閉合，鼻音共鳴", examples:[
         {w:"map",m:[0,0]},{w:"swim",m:[2,2]},{w:"home",m:[2,2]},{w:"room",m:[2,3]}]},
-    {ipa:"/n/", tip:"舌尖頂上牙齦，鼻音共鳴", examples:[
+    {kk:"[n]",  tip:"舌尖頂上牙齦，鼻音共鳴", examples:[
         {w:"no",m:[0,0]},{w:"win",m:[2,2]},{w:"funny",m:[2,3]},{w:"bank",m:[2,3]}]},
-    {ipa:"/ŋ/", tip:"舌根頂軟顎，鼻音，不發 /g/", examples:[
+    {kk:"[ŋ]",  tip:"舌根頂軟顎，鼻音，不發 [g]", examples:[
         {w:"sing",m:[2,3]},{w:"ring",m:[2,3]},{w:"drink",m:[3,4]},{w:"tongue",m:[3,5]}]},
-    {ipa:"/l/", tip:"舌尖頂上牙齦，側面出氣", examples:[
+    {kk:"[l]",  tip:"舌尖頂上牙齦，側面出氣", examples:[
         {w:"leg",m:[0,0]},{w:"tall",m:[2,3]},{w:"play",m:[1,1]},{w:"fill",m:[2,3]}]},
-    {ipa:"/r/", tip:"舌頭不碰任何地方，微捲或後縮", examples:[
+    {kk:"[r]",  tip:"舌頭不碰任何地方，微捲或後縮", examples:[
         {w:"red",m:[0,0]},{w:"car",m:[2,2]},{w:"right",m:[0,0]},{w:"write",m:[0,1]}]},
 ];
 
@@ -187,64 +197,56 @@ function nextQ(){
     curItem=ipaData[Math.floor(Math.random()*ipaData.length)];
     curExample=curItem.examples[Math.floor(Math.random()*curItem.examples.length)];
 
-    // 大字顯示底線單字
-    document.getElementById('quiz-word').innerHTML=markWord(curExample.w,curExample.m);
+    // 只顯示一個大字，點它播音
+    const wEl=document.getElementById('quiz-word');
+    wEl.innerHTML=markWord(curExample.w,curExample.m);
+    wEl.classList.remove('playing');
 
-    // 四個播放按鈕（全部例字）
-    const bc=document.getElementById('word-btns');
-    bc.innerHTML='';
-    curItem.examples.forEach(ex=>{
-        const b=document.createElement('button');
-        b.className='word-btn';
-        b.innerHTML='🔊 '+markWord(ex.w,ex.m);
-        b.onclick=()=>playWord(ex.w,b);
-        bc.appendChild(b);
-    });
-
-    // 四個選項
+    // 四個 KK 音標選項
     let opts=[curItem];
-    let pool=ipaData.filter(s=>s.ipa!==curItem.ipa);
-    while(opts.length<4){const r=pool[Math.floor(Math.random()*pool.length)];if(!opts.find(o=>o.ipa===r.ipa))opts.push(r);}
+    let pool=ipaData.filter(s=>s.kk!==curItem.kk);
+    while(opts.length<4){const r=pool[Math.floor(Math.random()*pool.length)];if(!opts.find(o=>o.kk===r.kk))opts.push(r);}
     opts=shuffle(opts);
     const oc=document.getElementById('options');
     oc.innerHTML='';
     opts.forEach(opt=>{
         const btn=document.createElement('button');
-        btn.className='opt';btn.textContent=opt.ipa;
-        btn.onclick=()=>checkAns(opt.ipa,btn);
+        btn.className='opt';btn.textContent=opt.kk;
+        btn.onclick=()=>checkAns(opt.kk,btn);
         oc.appendChild(btn);
     });
 }
 
-function playWord(word,btn){
+function playCurrent(){
+    if(!curExample)return;
     window.speechSynthesis.cancel();
-    document.querySelectorAll('.word-btn').forEach(b=>b.classList.remove('playing'));
-    if(btn)btn.classList.add('playing');
-    const msg=new SpeechSynthesisUtterance(word);
+    const wEl=document.getElementById('quiz-word');
+    wEl.classList.add('playing');
+    const msg=new SpeechSynthesisUtterance(curExample.w);
     msg.lang='en-US';msg.rate=0.7;
-    msg.onend=()=>{if(btn)btn.classList.remove('playing');};
+    msg.onend=()=>wEl.classList.remove('playing');
     window.speechSynthesis.speak(msg);
 }
 
 function checkAns(chosen,btn){
     if(answered)return;
     answered=true;
-    const ok=chosen===curItem.ipa;
+    const ok=chosen===curItem.kk;
     if(ok)correct++;
     document.querySelectorAll('.opt').forEach(b=>{
         b.disabled=true;
-        if(b.textContent===curItem.ipa)b.classList.add('correct');
+        if(b.textContent===curItem.kk)b.classList.add('correct');
         else if(b===btn&&!ok)b.classList.add('wrong');
     });
     const fb=document.getElementById('feedback');
     if(ok){
         fb.className='feedback correct-fb';
-        fb.innerHTML='✅ 正確！'+curItem.ipa+'　例字：'+curItem.examples.map(e=>e.w).join('、');
+        fb.innerHTML='✅ 正確！'+curItem.kk+'　例字：'+curItem.examples.map(e=>e.w).join('、');
     }else{
         fb.className='feedback wrong-fb';
-        fb.innerHTML='❌ 正確答案是 '+curItem.ipa+'<br>💡 '+curItem.tip;
+        fb.innerHTML='❌ 正確答案是 '+curItem.kk+'<br>💡 '+curItem.tip;
     }
-    playWord(curExample.w,null);
+    playCurrent();
     document.getElementById('score-line').textContent='第 '+qNum+' / '+TOTAL+' 題　｜　正確：'+correct;
     if(qNum>=TOTAL){setTimeout(showResult,1500);}
     else{document.getElementById('next-btn').style.display='inline-block';}
